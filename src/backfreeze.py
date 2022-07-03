@@ -1,16 +1,21 @@
+from cv2 import imread
 from fastapi import FastAPI
 from pydantic import BaseModel
+import PIL
 import pytesseract
 import cv2
+import base64
+import io
 import numpy as np
 
-def read_image(rgb_array, height, width):
+def read_image(base64_image):
     pytesseract.pytesseract.tesseract_cmd = "/app/.apt/usr/bin/tesseract"
     # Convert the image to grayscale
-    rgb_matrix = np.array(rgb_array).astype(np.uint8)
-    rgb_3d = np.reshape(rgb_matrix, (int(height), int(width), 3))
-    img = cv2.resize(rgb_3d, None, fx=1.2, fy=1.2, interpolation=cv2.INTER_CUBIC)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    imgdata = base64.b64decode(base64_image)
+    img = PIL.Image.open(io.BytesIO(imgdata))
+    img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    img = cv2.resize(img, None, fx=1.2, fy=1.2, interpolation=cv2.INTER_CUBIC)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     kernel = np.ones((1,1), np.uint8)
     img = cv2.dilate(img, kernel, iterations=1)
     img = cv2.erode(img, kernel, iterations=1)
@@ -21,9 +26,7 @@ def read_image(rgb_array, height, width):
 
 
 class Image(BaseModel):
-    rgb_array: list[int] = [];
-    height: int = None;
-    width: int = None;
+    base64_img: str = ""
 
 app = FastAPI()
 
@@ -32,5 +35,5 @@ async def create_item(item: Image):
     """
     Reads the image and returns the text in the image.
     """
-    text = read_image(item.rgb_array, item.height, item.width)
+    text = read_image(item.base64_img)
     return {'text_str': text, 'Status': 'success'}
