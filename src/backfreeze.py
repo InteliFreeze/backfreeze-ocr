@@ -1,6 +1,7 @@
 from cv2 import imread
 from fastapi import FastAPI
 from pydantic import BaseModel
+from pyzbar import pyzbar
 import PIL
 import pytesseract
 import cv2
@@ -10,7 +11,7 @@ import numpy as np
 
 def read_image(base64_image):
     pytesseract.pytesseract.tesseract_cmd = "/app/.apt/usr/bin/tesseract"
-    # Convert the image to grayscale
+    # Convert the image to grayscale a
     imgdata = base64.b64decode(base64_image)
     img = PIL.Image.open(io.BytesIO(imgdata))
     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -22,8 +23,15 @@ def read_image(base64_image):
     cv2.adaptiveThreshold(cv2.medianBlur(img, 3), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
     text = pytesseract.image_to_string(img)
     return text
-  
 
+def read_barcode(base64_image):
+    imgdata = base64.b64decode(base64_image)
+    img = PIL.Image.open(io.BytesIO(imgdata))
+    img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+    decoded = pyzbar.decode(img)
+    print(decoded)
+    return decoded[0].data.decode("utf-8")
 
 class Image(BaseModel):
     base64_img: str = ""
@@ -36,4 +44,12 @@ async def create_item(item: Image):
     Reads the image and returns the text in the image.
     """
     text = read_image(item.base64_img)
+    return {'text_str': text, 'Status': 'success'}
+
+@app.post("/barcode/")
+async def create_item(item: Image):
+    """
+    Reads the image and returns the barcode data
+    """
+    text = read_barcode(item.base64_img)
     return {'text_str': text, 'Status': 'success'}

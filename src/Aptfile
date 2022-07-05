@@ -1,2 +1,5 @@
 tesseract-ocr
 tesseract-ocr-eng
+zbar-tools
+libzbar0
+libzbar-dev
